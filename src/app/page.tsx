@@ -64,33 +64,31 @@ export default function Home() {
       </header>
       <main id="main" tabIndex={-1}>
         <section
-          className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20 lg:py-28"
+          className="flex min-h-[calc(100svh-4.5rem)] flex-col items-center justify-center px-5 py-14 text-center sm:px-8"
           aria-labelledby="hero-heading"
         >
           <p className="max-w-3xl text-lg leading-9">{mission}</p>
-          <div className="mt-8 max-w-3xl">
-            <h1
-              id="hero-heading"
-              className="max-w-[12em] text-[clamp(1.7rem,4.2vw,3.5rem)] leading-[1.28]"
+          <h1
+            id="hero-heading"
+            className="mt-8 max-w-[12em] text-[clamp(1.7rem,4.2vw,3.5rem)] leading-[1.28]"
+          >
+            {sloganLines.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+          </h1>
+          <div aria-hidden="true" className="mt-7 h-1 w-12 bg-yellow" />
+          <div className="mt-8 flex w-full max-w-md flex-col items-center justify-center gap-3 sm:max-w-none sm:flex-row">
+            <OpenPreviewButton className="w-full sm:w-auto">
+              {labels.start}
+            </OpenPreviewButton>
+            <a
+              href="#philosophy"
+              className={`${quietLinkClass} w-full sm:w-auto`}
             >
-              {sloganLines.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </h1>
-            <div aria-hidden="true" className="mt-7 h-1 w-12 bg-yellow" />
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <OpenPreviewButton className="w-full sm:w-auto">
-                {labels.start}
-              </OpenPreviewButton>
-              <a
-                href="#philosophy"
-                className={`${quietLinkClass} w-full sm:w-auto`}
-              >
-                {labels.philosophy}
-              </a>
-            </div>
+              {labels.philosophy}
+            </a>
           </div>
         </section>
 
