@@ -1,4 +1,3 @@
-import { HeroArt } from "@/components/hero-art";
 import { OpenPreviewButton } from "@/components/preview-provider";
 import { ValueCard } from "@/components/value-card";
 import {
@@ -19,7 +18,7 @@ export default function Home() {
 
   return (
     <>
-      <a className="skip-link" href="#content">
+      <a className="skip-link" href="#main">
         {labels.skip}
       </a>
       <header
@@ -63,10 +62,17 @@ export default function Home() {
           </OpenPreviewButton>
         </div>
       </header>
-      <main id="content" tabIndex={-1}>
-        <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20 lg:py-28">
-          <div>
-            <h1 className="max-w-[10em] text-[clamp(1.7rem,4.2vw,3.5rem)] leading-[1.28]">
+      <main id="main" tabIndex={-1}>
+        <section
+          className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20 lg:py-28"
+          aria-labelledby="hero-heading"
+        >
+          <p className="max-w-3xl text-lg leading-9">{mission}</p>
+          <div className="mt-8 max-w-3xl">
+            <h1
+              id="hero-heading"
+              className="max-w-[12em] text-[clamp(1.7rem,4.2vw,3.5rem)] leading-[1.28]"
+            >
               {sloganLines.map((line) => (
                 <span key={line} className="block">
                   {line}
@@ -74,17 +80,18 @@ export default function Home() {
               ))}
             </h1>
             <div aria-hidden="true" className="mt-7 h-1 w-12 bg-yellow" />
-            <p className="mt-7 max-w-xl text-lg leading-9">{mission}</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <OpenPreviewButton className="w-full sm:w-auto">
                 {labels.start}
               </OpenPreviewButton>
-              <a href="#philosophy" className={`${quietLinkClass} w-full sm:w-auto`}>
+              <a
+                href="#philosophy"
+                className={`${quietLinkClass} w-full sm:w-auto`}
+              >
                 {labels.philosophy}
               </a>
             </div>
           </div>
-          <HeroArt />
         </section>
 
         <section
@@ -111,11 +118,7 @@ export default function Home() {
                         : "lg:col-span-2"
                   }
                 >
-                  <ValueCard
-                    text={text}
-                    english={valueEnglish[index]}
-                    index={index}
-                  />
+                  <ValueCard text={text} english={valueEnglish[index]} />
                 </div>
               ))}
             </div>
