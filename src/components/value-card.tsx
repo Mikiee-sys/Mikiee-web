@@ -1,5 +1,4 @@
 import { splitValue, valueEnglish } from "@/content/original";
-import { labels } from "@/content/ui";
 
 function BilingualTitle({ title, english }: { title: string; english: string }) {
   const at = title.indexOf(english);
@@ -16,14 +15,11 @@ function BilingualTitle({ title, english }: { title: string; english: string }) 
 export function ValueCard({
   text,
   english,
-  index,
 }: {
   text: string;
   english: (typeof valueEnglish)[number];
-  index: number;
 }) {
   const { title, lead, rest } = splitValue(text);
-  const panelId = `value-panel-${index}`;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-paper">
@@ -33,22 +29,9 @@ export function ValueCard({
           <BilingualTitle title={title} english={english} />
         </h3>
         <p className="mt-3 leading-relaxed">{lead}</p>
-        <details className="fulltext mt-auto pt-4">
-          <summary
-            aria-controls={panelId}
-            className="flex min-h-11 cursor-pointer items-center rounded-md bg-chip px-4 text-base font-bold"
-          >
-            <span className="sr-only">{title}</span>
-            <span className="when-closed">{labels.expand}</span>
-            <span className="when-open">{labels.collapse}</span>
-          </summary>
-          <p
-            id={panelId}
-            className="mt-4 border-t border-line pt-4 leading-relaxed whitespace-pre-line"
-          >
-            {rest}
-          </p>
-        </details>
+        {rest ? (
+          <p className="mt-4 leading-relaxed whitespace-pre-line">{rest}</p>
+        ) : null}
       </div>
     </article>
   );

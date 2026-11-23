@@ -162,27 +162,24 @@ try {
   await page.screenshot({ path: `${outDir}/mobile-skip-focus.png` });
   await page.keyboard.press("Enter");
   const afterSkip = await page.evaluate(() => document.activeElement?.id);
-  check("skip link moves to main", afterSkip === "content", afterSkip ?? "");
+  check("skip link moves to main", afterSkip === "main", afterSkip ?? "");
 
-  const summary = await page.$("summary");
-  await summary.focus();
-  await page.keyboard.press("Enter");
-  const opened = await page.$eval("details", (element) => element.open);
-  check("enter expands value", opened);
-  await page.$eval("details[open]", (element) =>
+  const valueCard = await page.$("#values article");
+  await valueCard.evaluate((element) =>
     element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }),
   );
-  const expandedText = await page.$eval("details[open] p", (element) => element.textContent);
+  const valueText = await page.$eval("#values article", (element) => element.innerText);
   check(
-    "expanded text is full original value",
-    expandedText.includes("我们尊重每一种皮肤状态。一个人不需要先变得完美，才值得被接纳。") &&
-      !expandedText.includes("01. Acceptance"),
-    expandedText?.slice(0, 40) ?? "",
+    "value card shows full original text",
+    valueText.includes("01. Acceptance · 接纳") &&
+      valueText.includes("不制造容貌焦虑，不定义完美皮肤。") &&
+      valueText.includes(
+        "我们尊重每一种皮肤状态。一个人不需要先变得完美，才值得被接纳。",
+      ),
+    valueText?.slice(0, 60) ?? "",
   );
-  await page.screenshot({ path: `${outDir}/mobile-expanded.png` });
-  await page.keyboard.press("Enter");
-  const closed = await page.$eval("details", (element) => element.open);
-  check("enter collapses value", closed === false);
+  check("value cards have no expand control", (await page.$$("summary")).length === 0);
+  await page.screenshot({ path: `${outDir}/mobile-value.png` });
 
   const heroButton = await page.$("main button");
   await heroButton.evaluate((element) =>

@@ -6,8 +6,6 @@ export const labels = {
   philosophy: "理念",
   next: "后续页面",
   start: "开始皮肤档案",
-  expand: "展开全文",
-  collapse: "收起",
   previewTitle: "皮肤档案预览",
   building: "建设中",
   noSave: "不填写，不保存。",
@@ -18,7 +16,7 @@ export const labels = {
 
 export const stages = [
   "初次皮肤档案",
-  "痤疮日常记录",
+  "痘痘日常记录",
   "生活与护肤日志",
   "趋势与关联",
 ] as const;

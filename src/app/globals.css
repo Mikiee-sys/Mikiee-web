@@ -95,27 +95,6 @@ button:focus-visible {
   outline-offset: -6px;
 }
 
-summary {
-  display: block;
-  list-style: none;
-}
-
-summary::-webkit-details-marker {
-  display: none;
-}
-
-details.fulltext .when-open {
-  display: none;
-}
-
-details.fulltext[open] .when-open {
-  display: inline;
-}
-
-details.fulltext[open] .when-closed {
-  display: none;
-}
-
 #profile-preview {
   width: min(34rem, calc(100vw - 1.5rem));
   max-height: calc(100vh - 1.5rem);
