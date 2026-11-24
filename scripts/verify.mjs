@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer-core";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { applyMinus, applyPlus, applyTyped, tZoneRollup, toggleUncertain } from "../src/content/first-record.ts";
 
 const baseUrl = process.env.WELCOME_URL ?? "http://127.0.0.1:43123";
 const outDir = process.env.SHOT_DIR ?? "/tmp/welcome-shots";
@@ -345,6 +346,236 @@ try {
   );
   check("320 no horizontal scroll", narrow);
   await page.screenshot({ path: `${outDir}/narrow-home.png` });
+
+  check("typed empty is empty", applyTyped("").kind === "empty");
+  check("typed zero stays zero", applyTyped("0")?.kind === "count" && applyTyped("0")?.value === 0);
+  check("typed decimal rejected", applyTyped("1.5") === null);
+  check("typed negative rejected", applyTyped("-1") === null);
+  check("typed letters rejected", applyTyped("a") === null);
+  check("minus on empty stays empty", applyMinus({ kind: "empty" }).kind === "empty");
+  check("minus on zero stays zero", applyMinus({ kind: "count", value: 0 }).value === 0);
+  check("plus on empty becomes one", applyPlus({ kind: "empty" }).value === 1);
+  check("plus on uncertain becomes one", applyPlus({ kind: "uncertain" }).value === 1);
+  const blocked = tZoneRollup({ kind: "empty" }, { kind: "uncertain" });
+  check(
+    "t-zone does not sum gaps as zero",
+    blocked.kind === "incomplete" && !("value" in blocked),
+    JSON.stringify(blocked),
+  );
+  const summed = tZoneRollup({ kind: "count", value: 0 }, { kind: "count", value: 2 });
+  check("t-zone sums explicit numbers", summed.kind === "sum" && summed.value === 2);
+  check("uncertain toggles back to empty", toggleUncertain({ kind: "uncertain" }).kind === "empty");
+
+  const record = await browser.newPage();
+  await record.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await record.goto(baseUrl, { waitUntil: "networkidle0" });
+  await record.evaluate(() => {
+    const originalSet = localStorage.setItem.bind(localStorage);
+    window.__storageWrites = [];
+    localStorage.setItem = (key, value) => {
+      window.__storageWrites.push(String(key));
+      return originalSet(key, value);
+    };
+  });
+  await record.click("main button");
+  await record.waitForSelector("dialog[open]");
+  await record.evaluate(() => {
+    [...document.querySelectorAll("dialog button")]
+      .find((button) => button.textContent?.trim() === "开始了解")
+      ?.click();
+  });
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("了解你的皮肤"),
+  );
+  await record.evaluate(() => {
+    [...document.querySelectorAll("dialog button")]
+      .find((button) => button.textContent?.trim() === "闭口")
+      ?.click();
+  });
+  for (let step = 0; step < 4; step += 1) {
+    await record.evaluate(() => {
+      [...document.querySelectorAll("dialog button")]
+        .find((button) => button.textContent?.trim() === "下一步")
+        ?.click();
+    });
+  }
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("隐私与分享边界"),
+  );
+  await record.evaluate(() => {
+    [...document.querySelectorAll("dialog button")]
+      .find((button) => button.textContent?.trim() === "完成")
+      ?.click();
+  });
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("建立我的首次记录"),
+  );
+  const recordRequests = [];
+  record.on("request", (request) => {
+    recordRequests.push({ url: request.url(), method: request.method() });
+  });
+  await record.click('dialog a[href="/first-record"]');
+  await record.waitForFunction(() => location.pathname === "/first-record");
+  check("record page is its own url", record.url().includes("/first-record"));
+  const recordIntro = await record.evaluate(() => document.body.innerText);
+  check("record page says it is not a saved archive", recordIntro.includes("没有保存成正式档案"));
+  check("record page says left is the user's left", recordIntro.includes("画面左侧是你的左脸颊"));
+  check("record page lists five areas", ["额头", "鼻子", "左脸颊", "右脸颊", "下巴"].every((label) => recordIntro.includes(label)));
+  check("record starts unfilled", recordIntro.includes("未填") && !recordIntro.includes("明确记为 0"));
+
+  const cellStatus = (area, lesion) =>
+    record.$eval(`[data-record-cell="${area}:${lesion}"]`, (element) => ({
+      status: element.getAttribute("data-status"),
+      value: element.getAttribute("data-value"),
+    }));
+
+  await record.click('[data-record-cell="额头:黑头"] input');
+  await record.keyboard.type("0");
+  const explicitZero = await cellStatus("额头", "黑头");
+  check("explicit zero is not unfilled", explicitZero.status === "count" && explicitZero.value === "0", JSON.stringify(explicitZero));
+
+  const beforeInvalid = await cellStatus("额头", "闭口");
+  await record.$eval('[data-record-cell="额头:闭口"] input', (element) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(element, "-2");
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    setter?.call(element, "1.5");
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const afterInvalid = await cellStatus("额头", "闭口");
+  check("invalid count is ignored", afterInvalid.status === beforeInvalid.status && afterInvalid.value === beforeInvalid.value, JSON.stringify(afterInvalid));
+
+  await record.click('[data-record-cell="额头:红肿痘"] button[aria-label="额头红肿痘不确定"]');
+  const uncertain = await cellStatus("额头", "红肿痘");
+  check("uncertain is separate from zero", uncertain.status === "uncertain" && uncertain.value === "", JSON.stringify(uncertain));
+
+  await record.click('[data-record-cell="额头:脓包痘"] button[aria-label="额头脓包痘增加"]');
+  await record.click('[data-record-cell="额头:脓包痘"] button[aria-label="额头脓包痘增加"]');
+  const two = await cellStatus("额头", "脓包痘");
+  check("plus counts from unfilled to two", two.status === "count" && two.value === "2", JSON.stringify(two));
+
+  await record.evaluate(() => {
+    [...document.querySelectorAll("button")]
+      .find(
+        (button) =>
+          button.getAttribute("aria-pressed") != null &&
+          button.textContent?.includes("鼻子"),
+      )
+      ?.click();
+  });
+  await record.click('[data-record-cell="鼻子:闭口"] button[aria-label="鼻子闭口增加"]');
+  await record.click('[data-record-cell="鼻子:闭口"] button[aria-label="鼻子闭口增加"]');
+  await record.click('[data-record-cell="鼻子:闭口"] button[aria-label="鼻子闭口增加"]');
+  await record.click('[data-record-cell="鼻子:脓包痘"] button[aria-label="鼻子脓包痘增加"]');
+
+  await record.setViewport({ width: 320, height: 700, deviceScaleFactor: 2 });
+  const recordNarrow = await record.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  check("record 320 no horizontal scroll", recordNarrow);
+  await record.screenshot({ path: `${outDir}/narrow-record.png` });
+
+  await record.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  const phoneWide = await record.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  check("record phone no horizontal scroll", phoneWide);
+  await record.screenshot({ path: `${outDir}/mobile-record.png` });
+
+  await writeFile(
+    "/tmp/record-preview.png",
+    Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  );
+  const requestMark = recordRequests.length;
+  await record.$eval("input[type=file]", (element) => element.scrollIntoView({ block: "center" }));
+  const fileInput = await record.$("input[type=file]");
+  await fileInput.uploadFile("/tmp/record-preview.png");
+  await record.waitForSelector('img[src^="blob:"]');
+  const previewSrc = await record.$eval('img[src^="blob:"]', (element) => element.getAttribute("src"));
+  const uploadRequests = recordRequests.slice(requestMark).filter((request) => request.method !== "GET");
+  check("photo preview stays a local blob", previewSrc?.startsWith("blob:"), previewSrc ?? "");
+  check("photo preview does not upload", uploadRequests.length === 0, uploadRequests.map((request) => request.url).join(","));
+  await record.click("text=移除这张预览");
+  await record.waitForFunction(() => document.querySelectorAll('img[src^="blob:"]').length === 0);
+  check("removed photo preview is cleared", true);
+
+  await record.click("text=完成这次记录");
+  await record.waitForFunction(() => document.body.innerText.includes("这次记下的"));
+  const summary = await record.evaluate(() => document.body.innerText);
+  check("summary shows explicit zero", summary.includes("明确记为 0"));
+  check("summary shows uncertain", summary.includes("不确定"));
+  check("summary shows counted value", summary.includes("已记为 2"));
+  check("summary shows unfilled", summary.includes("未填"));
+  const tClosed = await record.$eval('[data-tzone="闭口"]', (element) => element.textContent ?? "");
+  check("t-zone closed is not summed as zero", tClosed.includes("未填") && !tClosed.includes("合计"), tClosed);
+  const tBlackhead = await record.$eval('[data-tzone="黑头"]', (element) => element.textContent ?? "");
+  check("t-zone blackhead blocked by unfilled nose", tBlackhead.includes("鼻子未填") && !tBlackhead.includes("合计"), tBlackhead);
+  const tPustule = await record.$eval('[data-tzone="脓包痘"]', (element) => element.textContent ?? "");
+  check("t-zone pustule sums both explicit counts", tPustule.includes("合计 3"), tPustule);
+  await record.screenshot({ path: `${outDir}/mobile-record-summary.png` });
+
+  const foreheadEdit = await record.$("article button");
+  await foreheadEdit.click();
+  await record.waitForFunction(() => document.body.innerText.includes("开始时不会替你填 0"));
+  const stillZero = await cellStatus("额头", "黑头");
+  check("edit keeps explicit zero", stillZero.value === "0", JSON.stringify(stillZero));
+
+  await record.click("text=返回问卷");
+  await record.waitForSelector("dialog[open]");
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("先到这里就很好"),
+  );
+  for (let step = 0; step < 5; step += 1) {
+    await record.evaluate(() => {
+      [...document.querySelectorAll("dialog button")]
+        .find((button) => button.textContent?.trim() === "上一步")
+        ?.click();
+    });
+  }
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("了解你的皮肤"),
+  );
+  const keptConcern = await record.$eval(
+    'dialog button[aria-pressed="true"]',
+    (element) => element.textContent?.trim() === "闭口",
+  );
+  check("wizard answer survives the round trip", keptConcern);
+  for (let step = 0; step < 4; step += 1) {
+    await record.evaluate(() => {
+      [...document.querySelectorAll("dialog button")]
+        .find((button) => button.textContent?.trim() === "下一步")
+        ?.click();
+    });
+  }
+  await record.evaluate(() => {
+    [...document.querySelectorAll("dialog button")]
+      .find((button) => button.textContent?.trim() === "完成")
+      ?.click();
+  });
+  await record.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("建立我的首次记录"),
+  );
+  await record.click('dialog a[href="/first-record"]');
+  await record.waitForFunction(() => location.pathname === "/first-record");
+  const keptZero = await cellStatus("额头", "黑头");
+  check("record count survives the round trip", keptZero.status === "count" && keptZero.value === "0", JSON.stringify(keptZero));
+
+  const storageWrites = await record.evaluate(() => window.__storageWrites ?? []);
+  check("health answers are not written to localStorage", storageWrites.length === 0, storageWrites.join(","));
+
+  await record.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  const desktopRecord = await record.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+  );
+  check("record desktop no horizontal scroll", desktopRecord);
+  await record.screenshot({ path: `${outDir}/desktop-record.png` });
+
+  await record.goto(`${baseUrl}/first-record`, { waitUntil: "networkidle0" });
+  const reloaded = await record.evaluate(() => document.body.innerText);
+  check("reload does not restore the record", reloaded.includes("未填") && !reloaded.includes("明确记为 0"));
 } finally {
   await browser.close();
 }
