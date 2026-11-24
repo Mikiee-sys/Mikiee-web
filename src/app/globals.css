@@ -96,7 +96,7 @@ button:focus-visible {
 }
 
 #profile-preview {
-  width: min(34rem, calc(100vw - 1.5rem));
+  width: min(42rem, calc(100vw - 1.5rem));
   max-height: calc(100vh - 1.5rem);
   margin: auto;
   padding: 0;
