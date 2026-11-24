@@ -86,10 +86,19 @@ try {
     lang: document.documentElement.lang,
   }));
   check("no data fields", controls.inputs === 0, JSON.stringify(controls.inputs));
+  const allowedOffPage = new Set(["/skin", "/daily", "/community"]);
   check(
-    "anchors stay on this page",
-    controls.anchors.every((href) => href?.startsWith("#")),
+    "anchors stay on this page or known places",
+    controls.anchors.every(
+      (href) => href?.startsWith("#") || allowedOffPage.has(href ?? ""),
+    ),
     controls.anchors.join(","),
+  );
+  check(
+    "next section links to three places",
+    controls.anchors.includes("/skin") &&
+      controls.anchors.includes("/daily") &&
+      controls.anchors.includes("/community"),
   );
   check(
     "buttons are type=button",

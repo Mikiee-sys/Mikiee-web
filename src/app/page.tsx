@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { OpenPreviewButton } from "@/components/preview-provider";
 import { ValueCard } from "@/components/value-card";
 import {
@@ -7,6 +8,7 @@ import {
   valueEnglish,
   valueTexts,
 } from "@/content/original";
+import { places } from "@/content/places";
 import { labels, quietLinkClass, stages } from "@/content/ui";
 
 export default function Home() {
@@ -157,6 +159,22 @@ export default function Home() {
             >
               {labels.next}
             </h2>
+            <ul className="mt-8 grid gap-5 sm:grid-cols-3">
+              {places.map((place) => (
+                <li key={place.href}>
+                  <Link
+                    href={place.href}
+                    className="flex h-full flex-col rounded-lg border border-line bg-paper p-6"
+                  >
+                    <h3 className="text-2xl leading-snug">{place.title}</h3>
+                    <p className="mt-3 flex-1 leading-relaxed">{place.summary}</p>
+                    <span className="mt-5 inline-flex min-h-11 items-center font-bold text-purple">
+                      进入
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
             <ol className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {stages.map((stage, index) => (
                 <li
