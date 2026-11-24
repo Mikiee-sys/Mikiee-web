@@ -1,9 +1,11 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
@@ -42,11 +44,28 @@ export function OpenPreviewButton({
 
 export function PreviewProvider({ children }: { children: ReactNode }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const openModeRef = useRef<"fresh" | "resume">("fresh");
   const [openSignal, setOpenSignal] = useState(0);
+  const pathname = usePathname();
+  const previousPath = useRef<string | null>(null);
 
   const openPreview = useCallback(() => {
+    openModeRef.current = "fresh";
     setOpenSignal((value) => value + 1);
   }, []);
+
+  const resumeWizard = useCallback(() => {
+    openModeRef.current = "resume";
+    setOpenSignal((value) => value + 1);
+  }, []);
+
+  useEffect(() => {
+    const previous = previousPath.current;
+    previousPath.current = pathname;
+    if (previous === "/first-record" && pathname === "/") {
+      resumeWizard();
+    }
+  }, [pathname, resumeWizard]);
 
   return (
     <PreviewContext.Provider value={openPreview}>
@@ -54,6 +73,7 @@ export function PreviewProvider({ children }: { children: ReactNode }) {
       <ProfileWizardDialog
         dialogRef={dialogRef}
         openSignal={openSignal}
+        openModeRef={openModeRef}
         onClosed={() => {}}
       />
     </PreviewContext.Provider>

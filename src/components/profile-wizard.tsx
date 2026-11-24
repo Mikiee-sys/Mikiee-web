@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useId,
@@ -104,16 +106,20 @@ function QuestionBlock({
 export function ProfileWizardDialog({
   dialogRef,
   openSignal,
+  openModeRef,
   onClosed,
 }: {
   dialogRef: RefObject<HTMLDialogElement | null>;
   openSignal: number;
+  openModeRef: RefObject<"fresh" | "resume">;
   onClosed: () => void;
 }) {
   const titleId = useId();
   const leadId = useId();
+  const router = useRouter();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const startRef = useRef<HTMLButtonElement>(null);
+  const recordLinkRef = useRef<HTMLAnchorElement>(null);
   const [phase, setPhase] = useState<Phase>("intro");
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<WizardAnswers>(() => emptyAnswers());
@@ -121,11 +127,13 @@ export function ProfileWizardDialog({
 
   useEffect(() => {
     if (openSignal === 0) return;
-    setPhase("intro");
-    setStepIndex(0);
-    setAnswers(emptyAnswers());
+    if (openModeRef.current === "fresh") {
+      setPhase("intro");
+      setStepIndex(0);
+      setAnswers(emptyAnswers());
+    }
     setMountedFields(true);
-  }, [openSignal]);
+  }, [openSignal, openModeRef]);
 
   useEffect(() => {
     if (openSignal === 0 || !mountedFields) return;
@@ -136,7 +144,11 @@ export function ProfileWizardDialog({
 
   useEffect(() => {
     if (!mountedFields || !dialogRef.current?.open) return;
-    if (phase === "intro" || phase === "done") {
+    if (phase === "done") {
+      recordLinkRef.current?.focus();
+      return;
+    }
+    if (phase === "intro") {
       startRef.current?.focus();
       return;
     }
@@ -224,14 +236,33 @@ export function ProfileWizardDialog({
         <p id={leadId} className="mt-3 leading-relaxed">
           {wizardCopy.doneBody}
         </p>
-        <button
-          ref={startRef}
-          type="button"
-          className={`${primaryButtonClass} mt-6`}
-          onClick={closeDialog}
-        >
-          {wizardCopy.close}
-        </button>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Link
+            ref={recordLinkRef}
+            href="/first-record"
+            className={primaryButtonClass}
+            onClick={(event) => {
+              event.preventDefault();
+              dialogRef.current?.close();
+              router.push("/first-record");
+            }}
+          >
+            建立我的首次记录
+          </Link>
+          <button
+            type="button"
+            className={quietLinkClass}
+            onClick={() => {
+              setPhase("steps");
+              setStepIndex(totalSteps - 1);
+            }}
+          >
+            {wizardCopy.back}
+          </button>
+          <button type="button" className={quietLinkClass} onClick={closeDialog}>
+            {wizardCopy.close}
+          </button>
+        </div>
       </>
     );
   } else if (step) {
