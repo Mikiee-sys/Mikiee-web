@@ -187,17 +187,22 @@ try {
   );
   await heroButton.click();
   await page.waitForSelector("dialog[open]");
+  await page.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("初次皮肤档案"),
+  );
   const dialogText = await page.$eval("dialog", (element) => element.innerText);
-  check("dialog says preview", dialogText.includes("皮肤档案预览"));
-  check("dialog says under construction", dialogText.includes("建设中"));
-  check("dialog says nothing is saved", dialogText.includes("不填写，不保存。"));
-  check("dialog has no fields", (await page.$$eval("dialog input, dialog textarea, dialog select", (nodes) => nodes.length)) === 0);
+  check("dialog intro title", dialogText.includes("初次皮肤档案"));
+  check("dialog intro explains local-only", dialogText.includes("不会上传或保存到服务器"));
+  check("dialog intro lists five steps", dialogText.includes("了解你的皮肤") && dialogText.includes("隐私与分享边界"));
+  await page.waitForFunction(
+    () => document.activeElement?.textContent?.trim() === "开始了解",
+  );
   const dialogFocus = await page.evaluate(() => document.activeElement?.textContent?.trim());
-  check("dialog focuses close", dialogFocus === "关闭", dialogFocus ?? "");
+  check("dialog focuses start", dialogFocus === "开始了解", dialogFocus ?? "");
   await page.keyboard.press("Tab");
   const tabStillInside = await page.evaluate(() => {
     const active = document.activeElement;
-    return active?.closest("dialog") != null && active.textContent?.trim() === "关闭";
+    return active?.closest("dialog") != null;
   });
   check("tab stays inside dialog", tabStillInside);
   await page.keyboard.press("Escape");
@@ -208,8 +213,68 @@ try {
 
   await heroButton.click();
   await page.waitForSelector("dialog[open]");
+  await page.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("开始了解"),
+  );
   await page.screenshot({ path: `${outDir}/mobile-dialog.png` });
+  await page.evaluate(() => {
+    const start = [...document.querySelectorAll("dialog button")].find(
+      (button) => button.textContent?.trim() === "开始了解",
+    );
+    start?.click();
+  });
+  await page.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("了解你的皮肤"),
+  );
+  const stepOne = await page.$eval("dialog", (element) => element.innerText);
+  check("wizard opens step 1", stepOne.includes("了解你的皮肤"));
+  check(
+    "wizard step 1 has concern options",
+    stepOne.includes("闭口") && stepOne.includes("反复出现"),
+  );
+  await page.evaluate(() => {
+    const closed = [...document.querySelectorAll("dialog button")].find(
+      (button) => button.textContent?.trim() === "闭口",
+    );
+    closed?.click();
+  });
+  const closedPressed = await page.$eval(
+    'dialog button[aria-pressed="true"]',
+    (element) => element.textContent?.trim() === "闭口",
+  );
+  check("wizard can select an option", closedPressed);
+  await page.evaluate(() => {
+    const next = [...document.querySelectorAll("dialog button")].find(
+      (button) => button.textContent?.trim() === "下一步",
+    );
+    next?.click();
+  });
+  await page.waitForFunction(() =>
+    document.querySelector("dialog")?.innerText.includes("这些困扰，你已经经历多久了"),
+  );
+  await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll("dialog button")];
+    buttons.find((button) => button.textContent?.trim() === "还没尝试，正在了解")?.click();
+    buttons.find((button) => button.textContent?.trim() === "用过护肤产品")?.click();
+  });
+  const triedState = await page.evaluate(() => {
+    const pressed = [...document.querySelectorAll('dialog button[aria-pressed="true"]')].map(
+      (button) => button.textContent?.trim(),
+    );
+    return {
+      pressed,
+      exclusive:
+        pressed.includes("用过护肤产品") && !pressed.includes("还没尝试，正在了解"),
+    };
+  });
+  check("tried exclusive clears not-yet", triedState.exclusive, triedState.pressed.join(","));
+  await page.screenshot({ path: `${outDir}/mobile-wizard-step2.png` });
   await page.keyboard.press("Escape");
+  await page.waitForSelector("dialog:not([open])");
+  check(
+    "closed dialog unmounts fields",
+    (await page.$$("dialog textarea, dialog input, dialog select")).length === 0,
+  );
 
   await page.$eval('main a[href="#philosophy"]', (element) => {
     element.scrollIntoView({ block: "center", behavior: "instant" });
