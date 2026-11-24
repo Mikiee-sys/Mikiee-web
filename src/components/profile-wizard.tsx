@@ -19,6 +19,7 @@ import {
   type QuestionDef,
   type WizardAnswers,
 } from "@/content/profile-wizard";
+import { places } from "@/content/places";
 import { primaryButtonClass, quietLinkClass } from "@/content/ui";
 
 type Phase = "intro" | "steps" | "done";
@@ -249,6 +250,20 @@ export function ProfileWizardDialog({
           >
             建立我的首次记录
           </Link>
+          {places.map((place) => (
+            <Link
+              key={place.href}
+              href={place.href}
+              className={quietLinkClass}
+              onClick={(event) => {
+                event.preventDefault();
+                dialogRef.current?.close();
+                router.push(place.href);
+              }}
+            >
+              {place.title}
+            </Link>
+          ))}
           <button
             type="button"
             className={quietLinkClass}

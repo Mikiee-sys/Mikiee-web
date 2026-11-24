@@ -95,7 +95,7 @@ try {
     controls.anchors.join(","),
   );
   check(
-    "next section links to three places",
+    "header links to three places",
     controls.anchors.includes("/skin") &&
       controls.anchors.includes("/daily") &&
       controls.anchors.includes("/community"),

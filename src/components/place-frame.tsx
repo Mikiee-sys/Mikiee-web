@@ -18,8 +18,8 @@ export function PlaceFrame({
       </a>
       <header className="sticky top-0 z-30 border-b border-line bg-cream">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
-          <Link href="/#next" className="inline-flex min-h-11 items-center font-bold">
-            返回后续页面
+          <Link href="/" className="inline-flex min-h-11 items-center font-bold">
+            返回首页
           </Link>
           <p className="text-base font-bold text-purple">{kicker}</p>
         </div>

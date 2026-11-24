@@ -52,12 +52,15 @@ export default function Home() {
             >
               {labels.philosophy}
             </a>
-            <a
-              href="#next"
-              className="inline-flex min-h-11 items-center rounded-full px-3 font-bold"
-            >
-              {labels.next}
-            </a>
+            {places.map((place) => (
+              <Link
+                key={place.href}
+                href={place.href}
+                className="inline-flex min-h-11 items-center rounded-full px-3 font-bold"
+              >
+                {place.title}
+              </Link>
+            ))}
           </nav>
           <OpenPreviewButton className="order-2 shrink-0 sm:order-3">
             {labels.start}
@@ -159,22 +162,6 @@ export default function Home() {
             >
               {labels.next}
             </h2>
-            <ul className="mt-8 grid gap-5 sm:grid-cols-3">
-              {places.map((place) => (
-                <li key={place.href}>
-                  <Link
-                    href={place.href}
-                    className="flex h-full flex-col rounded-lg border border-line bg-paper p-6"
-                  >
-                    <h3 className="text-2xl leading-snug">{place.title}</h3>
-                    <p className="mt-3 flex-1 leading-relaxed">{place.summary}</p>
-                    <span className="mt-5 inline-flex min-h-11 items-center font-bold text-purple">
-                      进入
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
             <ol className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {stages.map((stage, index) => (
                 <li
