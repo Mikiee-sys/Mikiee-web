@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { OpenPreviewButton } from "@/components/preview-provider";
 import { ValueCard } from "@/components/value-card";
 import {
@@ -56,6 +57,12 @@ export default function Home() {
             >
               {labels.next}
             </a>
+            <Link
+              href="/checkin"
+              className="inline-flex min-h-11 items-center rounded-full px-3 font-bold"
+            >
+              打卡
+            </Link>
           </nav>
           <OpenPreviewButton className="order-2 shrink-0 sm:order-3">
             {labels.start}
