@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { mission, slogan } from "@/content/original";
+import { CheckinSessionProvider } from "@/components/checkin-session";
 import { PreviewProvider } from "@/components/preview-provider";
 import { RecordDraftProvider } from "@/components/record-draft";
 import "./globals.css";
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="zh-Hans" className={`${sans.variable} ${serif.variable} h-full`}>
       <body className="min-h-full bg-cream font-sans text-ink antialiased">
         <RecordDraftProvider>
-          <PreviewProvider>{children}</PreviewProvider>
+          <CheckinSessionProvider>
+            <PreviewProvider>{children}</PreviewProvider>
+          </CheckinSessionProvider>
         </RecordDraftProvider>
       </body>
     </html>

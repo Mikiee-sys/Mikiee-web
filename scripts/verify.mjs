@@ -87,9 +87,13 @@ try {
   }));
   check("no data fields", controls.inputs === 0, JSON.stringify(controls.inputs));
   check(
-    "anchors stay on this page",
-    controls.anchors.every((href) => href?.startsWith("#")),
+    "anchors stay on this page or check-in",
+    controls.anchors.every((href) => href?.startsWith("#") || href === "/checkin"),
     controls.anchors.join(","),
+  );
+  check(
+    "homepage has one check-in entry",
+    controls.anchors.filter((href) => href === "/checkin").length === 1,
   );
   check(
     "buttons are type=button",
@@ -576,6 +580,72 @@ try {
   await record.goto(`${baseUrl}/first-record`, { waitUntil: "networkidle0" });
   const reloaded = await record.evaluate(() => document.body.innerText);
   check("reload does not restore the record", reloaded.includes("未填") && !reloaded.includes("明确记为 0"));
+
+  const checkin = await browser.newPage();
+  await checkin.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await checkin.goto(`${baseUrl}/checkin`, { waitUntil: "networkidle0" });
+  const checkinText = await checkin.evaluate(() => document.body.innerText);
+  check("checkin asks this day's feelings", checkinText.includes("这天你有哪些感受？"));
+  check("checkin says this visit only", checkinText.includes("只存在这次访问里"));
+  check("checkin does not say local save", !checkinText.includes("本地保存"));
+  const moodLabels = await checkin.$$eval('[aria-label="心情标签"] button', (nodes) =>
+    nodes.map((node) => node.textContent?.trim()),
+  );
+  check(
+    "mood uses the six agreed feelings",
+    moodLabels.join(",") === "平静,开心,紧张,低落,烦躁,其他",
+    moodLabels.join(","),
+  );
+  await checkin.click('[aria-label="心情标签"] button');
+  await checkin.click('[aria-label="心情回答方式"] button');
+  const moodState = await checkin.evaluate(() => {
+    const pressed = [...document.querySelectorAll('[aria-label="心情标签"] button')].map(
+      (button) => button.getAttribute("aria-pressed"),
+    );
+    const modes = [...document.querySelectorAll('[aria-label="心情回答方式"] button')].map(
+      (button) => ({
+        label: button.textContent?.trim(),
+        pressed: button.getAttribute("aria-pressed"),
+      }),
+    );
+    return { pressed, modes };
+  });
+  check(
+    "unclear clears specific feelings",
+    moodState.modes[0]?.pressed === "true" &&
+      moodState.modes[1]?.pressed === "false" &&
+      moodState.pressed.every((value) => value === "false"),
+    JSON.stringify(moodState),
+  );
+  await checkin.click('[aria-label="心情回答方式"] button:nth-of-type(2)');
+  const declined = await checkin.evaluate(() =>
+    [...document.querySelectorAll('[aria-label="心情回答方式"] button')].map((button) =>
+      button.getAttribute("aria-pressed"),
+    ),
+  );
+  check("declined replaces unclear", declined.join(",") === "false,true", declined.join(","));
+  await checkin.screenshot({ path: `${outDir}/mobile-checkin.png` });
+  await checkin.goto(`${baseUrl}/trends`, { waitUntil: "networkidle0" });
+  const trendsText = await checkin.evaluate(() => document.body.innerText);
+  check("trends starts empty", trendsText.includes("这段时间还没有记录"));
+  check("trends does not treat gaps as zero", trendsText.includes("缺记录不是 0"));
+  await checkin.screenshot({ path: `${outDir}/mobile-trends.png` });
+
+  await checkin.goto(`${baseUrl}/checkin`, { waitUntil: "networkidle0" });
+  await checkin.waitForFunction(() => {
+    const input = document.querySelector('input[type="date"]');
+    return input instanceof HTMLInputElement && /^\d{4}-\d{2}-\d{2}$/.test(input.value);
+  });
+  await checkin.click('[aria-label="心情标签"] button');
+  await checkin.click("text=记在这次访问里并查看趋势");
+  await checkin.waitForFunction(() => location.pathname === "/trends");
+  const saved = await checkin.evaluate(() => document.body.innerText);
+  check("saved visit shows the feeling", saved.includes("平静") && !saved.includes("这段时间还没有记录"));
+  check("saved visit still says gaps are not zero", saved.includes("缺记录不是 0"));
+  await checkin.screenshot({ path: `${outDir}/mobile-trends-saved.png` });
+  await checkin.reload({ waitUntil: "networkidle0" });
+  const forgotten = await checkin.evaluate(() => document.body.innerText);
+  check("reload forgets the check-in", forgotten.includes("这段时间还没有记录"));
 } finally {
   await browser.close();
 }
